@@ -58,25 +58,79 @@ class DUT(NgspiceWrapper):
         Hint:
         Use numpy's abs() function to calculate the magnitude of the complex number at each point.
         """
-        pass
+        return np.abs(vout[0])
         
     def find_ugbw(self, freq, vout):
         """
         TODO: Implement the unity gain bandwidth (UGBW) calculation
         """
-        pass
+        v1 = np.abs(vout)
+        if np.any(freq <= 0) or np.any(v1 <= 0):
+            return 0.0
+        freq_log = np.log10(freq)
+        gain_log = np.log10(v1)
+        ugbw_log, cross = self._get_best_crossing(freq_log, gain_log, 0.0)
+        if not cross:
+            return 0.0
+        return 10**ugbw_log
+
     
     def find_phm(self, freq, vout):
         """
         TODO: Implement the phase margin (PHM) calculation
         """
-        pass
+        ugbw = self.find_ugbw(freq,vout)
+        if ugbw == 0.0:
+            return 0.0
+        #unwrap assumes radians so degree outside
+        phase_deg = np.degrees(np.unwrap(np.angle(vout)))
+        phase_ugbw = np.interp(np.log10(ugbw), np.log10(freq), phase_deg) 
+        phm = 180 + phase_ugbw  
+        return phm
+        
     
     def find_slew_rate(self, time, signal, threshold_low=0.1, threshold_high=0.9, time_unit='us'):
         """
         TODO: Implement the slew rate calculation
         """
-        pass
+        signal_min = np.min(signal)
+        signal_max = np.max(signal)
+        swing = signal_max - signal_min
+        if swing <=0:
+            return 0.0
+        signal_low = signal_min + threshold_low * swing
+        signal_high = signal_min + threshold_high * swing
+
+        #rising edge
+        t_rise_low, i = self._time_to_cross_threshold(time, signal, signal_low, 0, True)
+        if t_rise_low is None:
+            return 0.0
+        t_rise_high, _ = self._time_to_cross_threshold(time, signal, signal_high, i, True)
+
+        #falling edge
+        t_fall_high, j = self._time_to_cross_threshold(time, signal, signal_high, 0, False)
+        if t_fall_high is None:
+            return 0.0
+        t_fall_low, _ = self._time_to_cross_threshold(time, signal, signal_low, j, False)
+
+        if t_rise_high is None or t_fall_low is None:
+            return 0.0
+        
+        sr_rise = (signal_high - signal_low) / (t_rise_high - t_rise_low)
+        sr_fall = (signal_high - signal_low) / (t_fall_low - t_fall_high)
+        sr = min(sr_rise, sr_fall)
+
+        unit_scale = {'s': 1.0, 'ms': 1e-3, 'us': 1e-6, 'ns': 1e-9}
+        return sr * unit_scale[time_unit]
+
+    def _time_to_cross_threshold(self, time, signal, signal_level, start, rising):
+        for i in range(start, len(signal) - 1):
+            xi = signal[i]
+            yi = signal[i + 1]
+            if (rising and xi<signal_level<=yi) or (not rising and xi>signal_level>=yi):
+                fraction = (signal_level-xi) / (yi-xi)
+                return time[i] + fraction * (time[i + 1] - time[i]), i
+        return None, None
 
     def _get_best_crossing(cls, xvec, yvec, val):
         interp_fun = interp.InterpolatedUnivariateSpline(xvec, yvec)

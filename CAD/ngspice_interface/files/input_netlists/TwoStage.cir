@@ -73,7 +73,8 @@ reset
 * dc analysis
 op
 * save the total current consumption in a file named 'dc_TwoStage.csv'
-let I_total = -i(vdd)
+* in dut_testbench.py self.current = - dc_raw_outputs[1]
+let I_total = i(vdd)
 wrdata output/dc_TwoStage.csv I_total
 reset
 

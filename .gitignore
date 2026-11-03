@@ -2,3 +2,5 @@ CLAUDE.md
 /.venv
 /Setup_test
 /changes_tracking
+/CAD/ngspice_interface/__pycache__
+/CAD/analysis/
