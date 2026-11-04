@@ -108,20 +108,21 @@ class DUT(NgspiceWrapper):
         t_rise_high, _ = self._time_to_cross_threshold(time, signal, signal_high, i, True)
 
         #falling edge
-        t_fall_high, j = self._time_to_cross_threshold(time, signal, signal_high, 0, False)
-        if t_fall_high is None:
-            return 0.0
-        t_fall_low, _ = self._time_to_cross_threshold(time, signal, signal_low, j, False)
+        #t_fall_high, j = self._time_to_cross_threshold(time, signal, signal_high, 0, False)
+        #if t_fall_high is None:
+        #    return 0.0
+        
+        #t_fall_low, _ = self._time_to_cross_threshold(time, signal, signal_low, j, False)
 
-        if t_rise_high is None or t_fall_low is None:
+        if t_rise_high is None :
             return 0.0
         
         sr_rise = (signal_high - signal_low) / (t_rise_high - t_rise_low)
-        sr_fall = (signal_high - signal_low) / (t_fall_low - t_fall_high)
-        sr = min(sr_rise, sr_fall)
+        #sr_fall = (signal_high - signal_low) / (t_fall_low - t_fall_high)
+        #sr = sr_rise
 
         unit_scale = {'s': 1.0, 'ms': 1e-3, 'us': 1e-6, 'ns': 1e-9}
-        return sr * unit_scale[time_unit]
+        return sr_rise * unit_scale[time_unit]
 
     def _time_to_cross_threshold(self, time, signal, signal_level, start, rising):
         for i in range(start, len(signal) - 1):
