@@ -139,6 +139,7 @@ class CircuitEnv(gym.Env):
                 val = max(spec_dict[spec], 0.0)
             if (val+target_value) == 0:
                 norm_spec[spec] = -1.0
+                continue
             norm_spec[spec] = (val-target_value)/(val+target_value)
         return norm_spec
     
