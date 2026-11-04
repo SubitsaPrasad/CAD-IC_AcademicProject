@@ -60,6 +60,7 @@ class CircuitEnv(gym.Env):
         self.score_history = []
 
         self.counter = 0
+        self.score = 0
         self.pvt_corner = {'process': 'TT', 'voltage': 1.2, 'temp': 27}
     
     def action_refine(self, action):
@@ -75,14 +76,13 @@ class CircuitEnv(gym.Env):
             p_min = float(p_range['min'])
             p_max = float(p_range['max'])
             p_step = float(p_range['step'])
-            n_points = int(round((p_max - p_min) / p_step)) + 1
-            values = np.linspace(p_min, p_max, n_points)
+            val = np.arange(p_min, p_max, p_step)
             a = action[i]
             norm_action = (a + 1.0) / 2.0
-            j = int(round(norm_action * (n_points - 1)))
-            value = float(values[j])
+            j = int(norm_action * (len(val) - 1))
+            value = float(val[j])
 
-            # For m values min, max, step are whole numbers in yaml
+            # For m, res values min, max, step are whole numbers in yaml
             if p_min.is_integer() and p_max.is_integer() and p_step.is_integer():
                 value = int(round(value))
 
@@ -99,12 +99,16 @@ class CircuitEnv(gym.Env):
         Returns:
             dict: A dictionary containing the measured metrics from the simulation.
         """
+        self.counter += 1
         netlist_path = self.simulation_engine.create_new_netlist(params, process=self.pvt_corner['process'], temp_pvt=self.pvt_corner['temp'], vdd=self.pvt_corner['voltage'])
         #for the agent to learn failed ngspice simulations are terrible designs
         info = self.simulation_engine.simulate(netlist_path)
         if info == 0:
             try:
-                return self.simulation_engine.measure_metrics()
+                #for the agent to learn all specs should be finite
+                measured_spec = self.simulation_engine.measure_metrics()
+                if all(np.isfinite(v) for v in measured_spec.values()):
+                    return measured_spec
             except Exception as e:
                 print(f"Measurement failed: {e}")
         return {'gain': 0.0,'ugbw': 0.0,'phm': 0.0,'slewRate': 0.0, 
@@ -129,7 +133,13 @@ class CircuitEnv(gym.Env):
         """
         norm_spec = {}
         for spec, target_value in self.dict_targets.items():
-            norm_spec[spec] = (spec_dict[spec]-target_value)/(spec_dict[spec]+target_value)
+            #negative sepc values results in +ve reward, to prevent that phm min val is clipped to 0
+            val = spec_dict[spec]
+            if spec == 'phm':
+                val = max(spec_dict[spec], 0.0)
+            if (val+target_value) == 0:
+                norm_spec[spec] = -1.0
+            norm_spec[spec] = (val-target_value)/(val+target_value)
         return norm_spec
     
     def evaluate(self, action):
