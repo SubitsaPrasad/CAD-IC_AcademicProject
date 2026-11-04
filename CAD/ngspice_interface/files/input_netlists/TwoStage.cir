@@ -1,0 +1,158 @@
+TwoStage_opamp_netlist
+
+*p045_TT contains electrical models of Mosfets used in the circuit.
+*45nm technology 
+*Typical-Typical process corner (nominal NMOS and PMOS characteristics)
+
+.include "ngspice_interface/files/spice_models/p045_TT.sp"    
+
+*************************************************************************************
+
+*.param means paramater in spice which is used to define a variable and assign a value to it.
+*define it once and use it in multiple places, in transistor definitions below.
+
+.param wp1=0.5u lp1=90n mp1=10    
+.param wn1=0.5u ln1=90n mn1=38
+.param wn3=0.5u ln3=90n mn3=9
+.param wp3=0.5u lp3=90n mp3=4
+.param wn4=0.5u ln4=90n mn4=20
+.param wn5=0.5u ln5=90n mn5=60
+.param cap=3p
+.param res=1k
+
+.param ibias=30u
+.param cload=10p
+.param vcm=0.6
+
+.param VDD=1.2
+.param temp_pvt=25
+.param trf=0.5u ; for slew-rate calculation
+.param period=10u ; for slew-rate calculation
+.param vhigh=VDD ; for slew-rate calculation
+
+*************************************************************************************
+
+*mos_name drain gate source bias type w l m 
+*circuit topology
+
+mp1 net4 net4 VDD VDD pmos w=wp1 l=lp1 m=mp1     
+mp2 net5 net4 VDD VDD pmos w=wp1 l=lp1 m=mp1
+mn1 net4 net2 net3 net3 nmos w=wn1 l=ln1 m=mn1
+mn2 net5 net1 net3 net3 nmos w=wn1 l=ln1 m=mn1
+mn3 net7 net7 VSS VSS nmos w=wn3 l=ln3 m=mn3
+mn4 net3 net7 VSS VSS nmos w=wn4 l=ln4 m=mn4
+mp3 net6 net5 VDD VDD pmos w=wp3 l=lp3 m=mp3
+mn5 net6 net7 VSS VSS nmos w=wn5 l=ln5 m=mn5
+cc net5 net8 {cap}
+rc net8 net6 {res}
+
+ibias VDD net7 ibias
+
+Vicm VCM VSS dc=vcm   
+*Establishes common-mode voltage around which the input signals fluctuate.
+
+*************************************************************************************
+
+*Defines input voltage source
+*DC voltage =0, Small-signal AC Amplitude = 1V, Pulse = Defines transient input waveform.
+*Pulse = V1 : Initial Voltage, V2 : Final Voltage, TD :Time delay, TR : Rise Time, TF : Fall Time, PW : Pulse Width, Per : Period
+
+Vinput aid VSS dc=0.0 ac=1.0 PULSE({-VHIGH/2} {VHIGH/2} {trf} {trf} {trf} {0.5*period-trf} {period})
+
+*************************************************************************************
+
+*voltage-controlled voltage source
+*ename net1 VCM aid 0 0.5
+
+ein1 net1 VCM aid 0 0.5
+ein2 net2 VCM aid 0 -0.5
+
+*************************************************************************************
+
+*Power supply conenction
+
+vdd VDD 0 dc=VDD
+vss VSS 0 dc=0
+
+*************************************************************************************
+
+*Load Capacitor
+
+CL net6 0 {cload}
+
+*************************************************************************************
+
+* set temperature
+
+.temp {temp_pvt}
+
+*************************************************************************************
+
+* The .control tells NGSpice that the following commands are simulation-control commands.
+
+.control
+run
+set units=degrees   *use degree instead of radians when giving phase related data
+set wr_vecnames     *use vector names/column headers when writing data into output files.
+option numdgt=7     *number of significant digits when printing numerical results
+
+*************************************************************************************
+
+* transient analysis : Shows how circuits voltage and current change over time when an input signal is applied.
+*Transient analysis : mainly needed for slew rate computation
+*Here, we can observe, how op-amp output responds to input pulse.
+*Time step = 50ns and total simulation duration = 30us
+tran 50n 30u
+
+* save Vout data in a file named 'tran_TwoStage.csv'
+*wrdata - write simulation data   , output folder,  File name,  voltage at the opamp output node.
+
+wrdata ngspice_interface/Simulation_Result/tran_TwoStage.csv v(net1) v(net2) v(net6)
+
+*************************************************************************************
+
+* ac analysis  : Tells us how amplifier responds to input signals of different frequencies.
+* This is important for measuring Gain, UGBW and Phase Margin
+* ac simulation, decade by decade, 10 frequency points per decade from 1Hz to 1THz
+* save Vout data in a file named 'ac_TwoStage.csv'
+* This saves 2 important quantities : output voltage magnitude in decibels and output voltage phase in degrees.
+
+ac dec 10 1 1T
+display
+wrdata ngspice_interface/Simulation_Result/ac_TwoStage.csv vdb(net6) vp(net6)
+
+*************************************************************************************
+
+* noise analysis
+* calculate the output noise and save it in a file named 'noise_TwoStage.csv'
+*.noise V(output) input_source dec points start_freq stop_freq
+*onoise_spectrum - output noise spectral density v/s frequency
+*inoise_spectrum - input noise spectral density v/s frequency
+
+noise v(net6) Vinput dec 10 1 1T
+wrdata ngspice_interface/Simulation_Result/noise_TwoStage.csv onoise_total
+
+
+*************************************************************************************
+
+* dc analysis
+*calculate the operating point
+*ngspice calculates the DC conditions of your circuit.
+*DC Voltage at every node, DC Current through transistors and other circuit elements
+*DC Operating conditions of the mosfets.
+
+op
+
+* save the total current consumption in a file named 'dc_TwoStage.csv'
+wrdata ngspice_interface/Simulation_Result/dc_TwoStage.csv i(vdd)
+
+*************************************************************************************
+
+*end control
+.endc
+
+*************************************************************************************
+
+.end
+
+*************************************************************************************
