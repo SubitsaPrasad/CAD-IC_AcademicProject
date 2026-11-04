@@ -209,14 +209,14 @@ class CircuitEnv(gym.Env):
         """
         self.evaluate(action)
         reward, hard_satisfied = self.reward_computation(self.cur_norm_specs)
-        ob = np.array(list(self.cur_norm_specs.values()), dtype=np.float32)
+        current_obs = np.array(list(self.cur_norm_specs.values()), dtype=np.float32)
         self.reward_history.append(reward)
         self.score += reward
         done = False
 
         os.makedirs(os.path.join('output_figs', str(self.run_id)), exist_ok=True)
         if hard_satisfied:
-            plot_running_maximum(self.reward_history, self.run_id)
+            plot_running_maximum(self.reward_history,self.run_id)
 
         self.env_steps += 1
         self.episode_steps += 1
@@ -229,7 +229,7 @@ class CircuitEnv(gym.Env):
             self.score = 0.0
 
         info = {'hard_satisfied': hard_satisfied}
-        return ob, reward, done, info
+        return current_obs, reward, done, info
     
     def reward_computation(self, norm_specs):
         """

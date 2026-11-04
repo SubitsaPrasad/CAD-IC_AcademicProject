@@ -12,7 +12,8 @@ def readParser():
     parser.add_argument('--seed', type=int, default=123456, metavar='N',
                         help='random seed (default: 123456)')
 
-    parser.add_argument('--noise_sigma', type=float, default="???",
+    #using default value from the TD3 paper
+    parser.add_argument('--noise_sigma', type=float, default=0.1,
                         help='fixed noise sigma added to the deterministic action')
 
     parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
@@ -29,20 +30,25 @@ def readParser():
     
     parser.add_argument('--hidden_size', type=int, default=256, metavar='N',
                         help='hidden size (default: 256)')
-    
-    parser.add_argument('--batch_size', type=int, default="???", metavar='N',
+
+    #how many past values should the agent use to learn
+    parser.add_argument('--batch_size', type=int, default=256, metavar='N',
                         help='hidden size')
-    
-    parser.add_argument('--w', type=int, default="???", metavar='N',
+
+    #in the instructions it is specified within 5k simulations
+    #during the warmup phase good design isn't the goal so I choose to spend <10% of simulations for warmup
+    parser.add_argument('--w', type=int, default=300, metavar='N',
                         help='number of warmup steps')
     
     parser.add_argument('--T', type=int, default=10_000, metavar='N',
                         help='total training steps (default: 10_000)')
-    
-    parser.add_argument('--pi_lr', type=float, default="???", metavar='G',
+
+    #for actor, it follows critic
+    parser.add_argument('--pi_lr', type=float, default=3e-4, metavar='G',
                         help='learning rate')
-    
-    parser.add_argument('--q_lr', type=float, default="???", metavar='G',
+
+    #for critic
+    parser.add_argument('--q_lr', type=float, default=3e-4, metavar='G',
                         help='learning rate')
 
     parser.add_argument('--replay_size', type=int, default=1000000, metavar='N',
