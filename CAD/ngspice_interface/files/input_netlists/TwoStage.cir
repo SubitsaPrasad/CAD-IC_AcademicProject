@@ -55,19 +55,19 @@ option numdgt=7
 * transient analysis
 tran 50n 30u
 * save Vout data in a file named 'tran_TwoStage.csv'
-wrdata output/tran_TwoStage.csv v(net6)
+wrdata tran_TwoStage.csv v(net6)
 reset
 
 * ac analysis
 ac dec 10 1 1T
 * save Vout data in a file named 'ac_TwoStage.csv'
-wrdata output/ac_TwoStage.csv v(net6)
+wrdata ac_TwoStage.csv v(net6)
 reset
 
 * noise analysis
 * calculate the output noise and save it in a file named 'noise_TwoStage.csv'
 noise v(net6) Vinput dec 10 1 1G
-wrdata output/noise_TwoStage.csv onoise_total
+wrdata noise_TwoStage.csv onoise_total
 reset
 
 * dc analysis
@@ -75,7 +75,7 @@ op
 * save the total current consumption in a file named 'dc_TwoStage.csv'
 * in dut_testbench.py self.current = - dc_raw_outputs[1]
 let I_total = i(vdd)
-wrdata output/dc_TwoStage.csv I_total
+wrdata dc_TwoStage.csv I_total
 reset
 
 .endc

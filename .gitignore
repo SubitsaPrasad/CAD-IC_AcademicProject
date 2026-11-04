@@ -4,3 +4,9 @@ CLAUDE.md
 /changes_tracking
 /CAD/ngspice_interface/__pycache__
 /CAD/analysis/
+/CAD/utils/__pycache__
+/CAD/__pycache__
+/CAD/unit_tests/__pycache__
+*.pdf
+/CAD/no_backup
+/CAD/unit_tests
