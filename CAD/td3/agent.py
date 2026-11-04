@@ -104,7 +104,12 @@ class TD3(object):
         Returns:
             action: The selected action as a numpy array
         """
-        pass
+        state = torch.as_tensor(state, dtype=torch.float32, device=device).reshape(1, -1)
+        with torch.no_grad():
+            action = self.actor(state).cpu().detach().numpy().flatten()
+        
+        action = action + np.random.normal(0, self.max_action * self.expl_noise, self.action_dim)
+        return np.clip(action, -self.max_action, self.max_action)
 
 
     def update_parameters(self, memory_batch, update):
@@ -143,6 +148,38 @@ class TD3(object):
             memory_batch: Tuple of (state, action, next_state, reward, not_done) tensors
             update: Update step (not used in this implementation)
         """
+
+        self.total_it += 1
+        #following state, action, next_state, reward, done order in td3_runner.py and buffer.py
+        state, action, next_state, reward, not_done = memory_batch
+        state = state.to(device) 
+        action = action.to(device)
+        reward = reward.to(device)
+        next_state = next_state.to(device)
+        not_done = not_done.to(device)
+
+        with torch.no_grad():
+            noise = (torch.randn_like(action) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
+            next_action = (self.actor_target(next_state) + noise).clamp(-self.max_action, self.max_action)
+            
+            target_Q1, target_Q2 = self.critic_target(next_state, next_action)
+            target_Q = reward + self.discount * not_done * torch.min(target_Q1, target_Q2)
+
+        cur_Q1, cur_Q2 = self.critic(state,action)
+        critic_loss = F.mse_loss(cur_Q1, target_Q) + F.mse_loss(cur_Q2, target_Q)
+        self.critic_optimizer.zero_grad()
+        critic_loss.backward()
+        self.critic_optimizer.step()
+
+        if self.total_it % self.policy_freq == 0:
+            actor_loss = -self.critic.Q1(state, self.actor(state)).mean()
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+            for param, target_param in zip(self.critic.parameters(), self.critic_target.parameters()):
+                target_param.data.copy_((target_param.data*(1-self.tau)) + (param.data*self.tau))
+            for param, target_param in zip(self.actor.parameters(), self.actor_target.parameters()):
+                target_param.data.copy_((target_param.data*(1-self.tau)) + (param.data*self.tau))
 
 
     def save(self, filename):

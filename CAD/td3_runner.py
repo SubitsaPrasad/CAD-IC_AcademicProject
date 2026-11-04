@@ -90,9 +90,10 @@ def warmup_exploration(args, env, env_pool, agent):
 
 
 def train_policy(args, env_pool, agent, total_steps):
-    state, action, reward, next_state, done = env_pool.sample(args.batch_size)
-    batch = (state, action, reward, next_state, done)
-    agent.update_parameters(memory=batch, update=total_steps)
+    #in buffer.py sample() returns in the following order
+    state, action, next_state, reward, done = env_pool.sample(args.batch_size)
+    batch = (state, action, next_state, reward, done)
+    agent.update_parameters(memory_batch=batch, update=total_steps)
 
 
 def main(args=None):

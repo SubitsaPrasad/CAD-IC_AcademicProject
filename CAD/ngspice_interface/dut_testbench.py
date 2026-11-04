@@ -116,7 +116,8 @@ class DUT(NgspiceWrapper):
 
         if t_rise_high is None :
             return 0.0
-        
+
+        #The reference designs reports SR of rising edges only 
         sr_rise = (signal_high - signal_low) / (t_rise_high - t_rise_low)
         #sr_fall = (signal_high - signal_low) / (t_fall_low - t_fall_high)
         #sr = sr_rise

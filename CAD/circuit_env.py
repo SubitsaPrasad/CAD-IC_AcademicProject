@@ -67,7 +67,27 @@ class CircuitEnv(gym.Env):
         TODO: Implement a function that converts normalized actions of range [-1, 1] to actual parameter values.
         
         """
-        pass
+        #discrete mapping -> every parameter has a step in yaml and m values are whole numbers as they indicate the number of parallel transistors
+        #flatten into a 1-D numpy array
+        action = np.clip(np.asarray(action, dtype=np.float64).flatten(), -1.0, 1.0)
+        actual_action = {}
+        for i, (param, p_range) in enumerate(self.param_ranges.items()):
+            p_min = float(p_range['min'])
+            p_max = float(p_range['max'])
+            p_step = float(p_range['step'])
+            n_points = int(round((p_max - p_min) / p_step)) + 1
+            values = np.linspace(p_min, p_max, n_points)
+            a = action[i]
+            norm_action = (a + 1.0) / 2.0
+            j = int(round(norm_action * (n_points - 1)))
+            value = float(values[j])
+
+            # For m values min, max, step are whole numbers in yaml
+            if p_min.is_integer() and p_max.is_integer() and p_step.is_integer():
+                value = int(round(value))
+
+            actual_action[param] = value
+        return actual_action
     
     def simulate(self, params):
         """
@@ -79,7 +99,16 @@ class CircuitEnv(gym.Env):
         Returns:
             dict: A dictionary containing the measured metrics from the simulation.
         """
-        pass
+        netlist_path = self.simulation_engine.create_new_netlist(params, process=self.pvt_corner['process'], temp_pvt=self.pvt_corner['temp'], vdd=self.pvt_corner['voltage'])
+        #for the agent to learn failed ngspice simulations are terrible designs
+        info = self.simulation_engine.simulate(netlist_path)
+        if info == 0:
+            try:
+                return self.simulation_engine.measure_metrics()
+            except Exception as e:
+                print(f"Measurement failed: {e}")
+        return {'gain': 0.0,'ugbw': 0.0,'phm': 0.0,'slewRate': 0.0, 
+                'noise':self.dict_targets['noise'] * 1000,'current':self.dict_targets['current']*1000,'area':self.dict_targets['area']*1000 }
     
     def normalize_specs(self, spec_dict):
         """
@@ -98,7 +127,10 @@ class CircuitEnv(gym.Env):
             dict: A dictionary containing the normalized specifications, with the same keys
                   as `spec_dict`.
         """
-        pass
+        norm_spec = {}
+        for spec, target_value in self.dict_targets.items():
+            norm_spec[spec] = (spec_dict[spec]-target_value)/(spec_dict[spec]+target_value)
+        return norm_spec
     
     def evaluate(self, action):
         self.param_values = self.action_refine(action)
@@ -127,7 +159,14 @@ class CircuitEnv(gym.Env):
         Note:
         - The observation is returned as a NumPy array of type float32.
         """
-        pass
+        if seed is not None:
+            np.random.seed(seed)
+        self.episode_steps = 0
+        random_action = np.random.uniform(-1, 1, self.n_actions)
+        #result stored in self.cur_norm_specs
+        self.evaluate(random_action)
+        self.score = 0.0
+        return np.array(list(self.cur_norm_specs.values()), dtype=np.float32)
     
     def step(self, action):
         """
@@ -138,10 +177,13 @@ class CircuitEnv(gym.Env):
         2. Compute the reward and check if the hard constraints are satisfied.
         3. Update the current observation.
         4. Append the reward to the reward history and update the score.
+
         5. Create output directories if they do not exist.
         6. If the goal state is reached, plot the running maximum reward.
+
         7. Increment the environment and episode step counters.
         8. Check if the maximum steps per episode have been reached, setting the done flag if true.
+        
         9. Every 10 steps, update the score history, also plot the learning curve, and reset the score.
         10. Return the current observation, reward, done flag, and additional information.
 
@@ -155,7 +197,29 @@ class CircuitEnv(gym.Env):
             - done (bool): A flag indicating whether the episode has ended.
             - info (dict): Additional information, including whether the goal state was reached.
         """
-        pass
+        self.evaluate(action)
+        reward, hard_satisfied = self.reward_computation(self.cur_norm_specs)
+        ob = np.array(list(self.cur_norm_specs.values()), dtype=np.float32)
+        self.reward_history.append(reward)
+        self.score += reward
+        done = False
+
+        os.makedirs(os.path.join('output_figs', str(self.run_id)), exist_ok=True)
+        if hard_satisfied:
+            plot_running_maximum(self.reward_history, self.run_id)
+
+        self.env_steps += 1
+        self.episode_steps += 1
+        if self.episode_steps >= self.max_steps_per_episode:
+            done = True
+
+        if (self.env_steps)%10 == 0:
+            self.score_history.append(self.score)
+            plotLearning(self.score_history, self.run_id)
+            self.score = 0.0
+
+        info = {'hard_satisfied': hard_satisfied}
+        return ob, reward, done, info
     
     def reward_computation(self, norm_specs):
         """
@@ -177,7 +241,25 @@ class CircuitEnv(gym.Env):
             - If not, add weighted reward components of the optimization targets.
         4. Return the computed reward and the hard_satisfied flag.
         """
-        pass
+        reward = 0.0
+        hard_satisfied = False
+        for spec in self.hard_constraints:
+            if spec == 'noise':
+                reward += -max(self.spec_weights[spec]*norm_specs[spec], 0.0)
+            else:
+                reward += min(self.spec_weights[spec]*norm_specs[spec], 0.0)
+
+        optimization_reward = 0.0
+        for spec in self.optimization_targets:
+            optimization_reward += -norm_specs[spec] * self.spec_weights[spec]
+
+        if reward>=self.success_threshold:
+            hard_satisfied = True
+            reward = 0.3 + optimization_reward
+        else:
+            reward += 0.05*optimization_reward
+
+        return reward, hard_satisfied
 
 
 if __name__ == '__main__':
