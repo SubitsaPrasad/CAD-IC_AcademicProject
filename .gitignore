@@ -8,3 +8,4 @@ CLAUDE.md
 /CAD/unit_tests
 CHANGELOG.md
 **/__pycache__
+*.txt

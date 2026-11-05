@@ -6,6 +6,7 @@ import yaml
 import math
 from ngspice_interface import DUT as DUT_NGSpice
 from utils.plotting import plotLearning, plot_running_maximum
+from utils.saving import save_solutions_csv
 
 class CircuitEnv(gym.Env):
     PER_LOW, PER_HIGH = -np.inf, +np.inf
@@ -59,6 +60,7 @@ class CircuitEnv(gym.Env):
         self.reward_history = []
         self.score_history = []
 
+        os.makedirs('solutions', exist_ok=True)
         self.counter = 0
         self.score = 0
         self.pvt_corner = {'process': 'TT', 'voltage': 1.2, 'temp': 27}
@@ -147,6 +149,21 @@ class CircuitEnv(gym.Env):
         self.param_values = self.action_refine(action)
         self.real_specs = self.simulate(self.param_values)
         self.cur_norm_specs = self.normalize_specs(self.real_specs)
+        
+        reward, _ = self.reward_computation(self.cur_norm_specs)
+        specs = {}
+        for i, j in self.real_specs.items():
+            if hasattr(j, 'item'):
+                specs[i] = j.item()
+            else:
+                specs[i] = j
+        params = {}
+        for i, j in self.param_values.items():
+            if hasattr(j, 'item'):
+                params[i] = j.item()
+            else:
+                params[i] = j
+        save_solutions_csv(self.run_id, self.counter, params, specs, reward)
     
     def reset(self, *, seed=None, options=None):
         """
