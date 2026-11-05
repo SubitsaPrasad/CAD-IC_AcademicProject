@@ -1,3 +1,6 @@
 from .agent import TD3
-from .sac_baseline import SAC
+try:
+    from .sac_baseline import SAC
+except ImportError:
+    pass
 from .buffer import ReplayBuffer
