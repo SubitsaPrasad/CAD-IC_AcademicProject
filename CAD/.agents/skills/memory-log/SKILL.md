@@ -8,6 +8,10 @@ description: Format and rules for saving a decision to the sizing run's memory. 
 Your task gives a memory folder and an entry prefix, for example `runs/run1/` and `refiner_r2`.
 Save each entry as a NEW file named `<prefix>_<k>.md`, with k = 1, 2, 3, ... Never overwrite a file.
 
+Never report a result unless a tool returned it, and quote `simulator_calls` from `get_status` in your reply. Do not end your turn before your closing entry is saved: a text reply is read as your final report.
+
+Call cad tools with call_mcp_tool: ServerName `cad`, ToolName, and Arguments such as `simulate` {"parameters": {...}}, `get_status` {"k": 1}, `warmup` {"n_steps": 100}, `train` {"n_steps": 100}.
+
 Each entry contains:
 
 - `agent`: your `name` from your agent file, exactly, not a job description
