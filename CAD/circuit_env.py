@@ -5,7 +5,7 @@ import os
 import yaml
 import math
 from ngspice_interface import DUT as DUT_NGSpice
-from utils.plotting import plotLearning, plot_running_maximum
+from utils.plotting import plotLearning, plot_running_maximum, plot_pareto_front
 from utils.saving import save_solutions_csv
 
 class CircuitEnv(gym.Env):
@@ -59,6 +59,7 @@ class CircuitEnv(gym.Env):
 
         self.reward_history = []
         self.score_history = []
+        self.feasible_specs = []
 
         os.makedirs('solutions', exist_ok=True)
         self.counter = 0
@@ -150,7 +151,8 @@ class CircuitEnv(gym.Env):
         self.real_specs = self.simulate(self.param_values)
         self.cur_norm_specs = self.normalize_specs(self.real_specs)
         
-        reward, _ = self.reward_computation(self.cur_norm_specs)
+        reward, hard_satisfied = self.reward_computation(self.cur_norm_specs)
+
         specs = {}
         for i, j in self.real_specs.items():
             if hasattr(j, 'item'):
@@ -164,6 +166,13 @@ class CircuitEnv(gym.Env):
             else:
                 params[i] = j
         save_solutions_csv(self.run_id, self.counter, params, specs, reward)
+
+        if hard_satisfied:
+            self.feasible_specs.append(specs)
+            fig_dir = os.path.join('output_figs', str(self.run_id))
+            os.makedirs(fig_dir, exist_ok=True)
+            plot_pareto_front(self.feasible_specs, os.path.join(fig_dir, 'pareto.png'))
+
     
     def reset(self, *, seed=None, options=None):
         """

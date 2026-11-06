@@ -11,3 +11,5 @@ CHANGELOG.md
 *.txt
 /.vscode
 session3-4.pptx
+/CAD/runs
+/CAD/circuit_analysis.py
