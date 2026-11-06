@@ -12,15 +12,18 @@ Each entry contains:
 
 - `agent`: your `name` from your agent file, exactly, not a job description
 - `simulator_calls`: the last `get_status` value plus your `simulate` calls since then (0 if you have no MCP tools)
-- `outcome`: what was measured, compared with the exact ranges you wrote in your previous prediction, and whether each was correct ("none" for your first entry). Never restate a prediction differently afterwards
-- Keep each entry under about 150 words, and write `design` on one line. Every entry is resent to the model, so long entries cost tokens
+- `outcome`: what was measured, compared with the exact ranges you wrote in your previous prediction: give the count correct and list only the wrong ones ("none" for your first entry). Never restate a prediction differently afterwards
+- Keep each entry under about 100 words, and write `design` on one line. Every entry is resent to the model, so long entries cost tokens
 - `reasoning`: why you act, using circuit theory and measured numbers, at most 3 sentences
 - `action`: what you do next
 - `prediction`: the measurable result you expect, with direction and rough size
-- `design`: the full parameters you are about to simulate
+- `design`: the ID and full parameters of the design you are about to simulate
+
+## Design IDs
+Each simulated design gets the ID `D<n>`, where n is `simulator_calls` after that simulation. A rejected design gets no ID. Use IDs whenever you refer to a design, and start each `outcome` with the ID it belongs to, for example `D7: measured ...`. Never name a design after an entry file.
 
 ## Order
-Write the entry BEFORE the action it describes, and never include that action's result in it.
+Write the entry BEFORE the action it describes, and never include that action's result in it. Send the entry and `simulate` in the same step, entry first, to save a turn.
 The result goes in the `outcome` of your NEXT entry, together with the measured specs and reward.
 After your last simulation, write one closing entry with that `outcome`, and `action: stop`.
 
