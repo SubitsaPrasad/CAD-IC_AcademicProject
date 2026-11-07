@@ -13,7 +13,7 @@ def readParser():
                         help='random seed (default: 123456)')
 
     #using default value from the TD3 paper
-    parser.add_argument('--noise_sigma', type=float, default=0.1,
+    parser.add_argument('--noise_sigma', type=float, default=0.2,
                         help='fixed noise sigma added to the deterministic action')
 
     parser.add_argument('--gamma', type=float, default=0.99, metavar='G',
@@ -37,7 +37,7 @@ def readParser():
 
     #in the instructions it is specified within 5k simulations
     #during the warmup phase good design isn't the goal so I choose to spend <10% of simulations for warmup
-    parser.add_argument('--w', type=int, default=300, metavar='N',
+    parser.add_argument('--w', type=int, default=100, metavar='N',
                         help='number of warmup steps')
     
     parser.add_argument('--T', type=int, default=10_000, metavar='N',
