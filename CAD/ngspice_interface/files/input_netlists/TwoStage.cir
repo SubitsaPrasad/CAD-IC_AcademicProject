@@ -55,7 +55,7 @@ option numdgt=7
 * transient analysis
 * through trial and error method simualtions with tmax=1ns reproduced reference designs
 * tmax = 2ns also works producing results with less than 5% difference than refernce designs
-* only 1 reference design (design 1) had spec SR > 30uV/s, with tmax=2ns we get -1.66% error
+* only 1 reference design (design 1) had spec SR > 30V/us, with tmax=2ns we get -1.66% error
 * without tmax steps were too coarse for faster edges
 tran 50n 30u 0 2n
 * save Vout data in a file named 'tran_TwoStage.csv'

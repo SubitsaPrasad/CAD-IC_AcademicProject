@@ -12,4 +12,5 @@ CHANGELOG.md
 /.vscode
 session3-4.pptx
 /CAD/runs
-/CAD/circuit_analysis.py
+circuit_analysis.py
+pareto_plot.py
