@@ -5,7 +5,6 @@ CLAUDE.md
 /CAD/analysis/
 *.pdf
 /CAD/no_backup
-/CAD/unit_tests
 CHANGELOG.md
 **/__pycache__
 *.txt

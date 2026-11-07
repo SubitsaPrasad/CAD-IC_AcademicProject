@@ -79,10 +79,11 @@ class CircuitEnv(gym.Env):
             p_min = float(p_range['min'])
             p_max = float(p_range['max'])
             p_step = float(p_range['step'])
-            val = np.arange(p_min, p_max, p_step)
+            n = int(round((p_max - p_min) / p_step))
+            val = p_min + p_step * np.arange(n)
             a = action[i]
             norm_action = (a + 1.0) / 2.0
-            j = int(norm_action * (len(val) - 1))
+            j = int(norm_action * (n - 1))
             value = float(val[j])
 
             # For m, res values min, max, step are whole numbers in yaml

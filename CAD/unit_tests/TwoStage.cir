@@ -1,0 +1,103 @@
+TwoStage_opamp_netlist
+
+.include "/home/sprasad/CAD-IC_Project/CAD/ngspice_interface/files/spice_models/p045_TT.sp"
+
+.param wp1=0.5u lp1=90n mp1=10
+.param wn1=0.5u ln1=90n mn1=38
+.param wn3=0.5u ln3=90n mn3=9
+.param wp3=0.5u lp3=90n mp3=4
+.param wn4=0.5u ln4=90n mn4=20
+.param wn5=0.5u ln5=90n mn5=60
+.param cap=3p
+.param res=1k
+
+.param ibias=30u
+.param cload=10p
+.param vcm=0.6
+
+.param VDD=1.2
+.param temp_pvt=25
+.param trf=0.5u ; for slew-rate calculation
+.param period=10u ; for slew-rate calculation
+.param vhigh=VDD ; for slew-rate calculation
+ 
+mp1 net4 net4 VDD VDD pmos w=wp1 l=lp1 m=mp1
+mp2 net5 net4 VDD VDD pmos w=wp1 l=lp1 m=mp1
+mn1 net4 net2 net3 net3 nmos w=wn1 l=ln1 m=mn1
+mn2 net5 net1 net3 net3 nmos w=wn1 l=ln1 m=mn1
+mn3 net7 net7 VSS VSS nmos w=wn3 l=ln3 m=mn3
+mn4 net3 net7 VSS VSS nmos w=wn4 l=ln4 m=mn4
+mp3 net6 net5 VDD VDD pmos w=wp3 l=lp3 m=mp3
+mn5 net6 net7 VSS VSS nmos w=wn5 l=ln5 m=mn5
+cc net5 net8 {cap}
+rc net8 net6 {res}
+
+ibias VDD net7 ibias
+
+Vicm VCM VSS dc=vcm
+Vinput aid VSS dc=0.0 ac=1.0 PULSE({-VHIGH/2} {VHIGH/2} {trf} {trf} {trf} {0.5*period-trf} {period})
+ein1 net1 VCM aid 0 0.5
+ein2 net2 VCM aid 0 -0.5
+
+vdd VDD 0 dc=VDD
+vss VSS 0 dc=0
+CL net6 0 {cload}
+
+* set temperature
+.temp {temp_pvt}
+
+.control
+run
+set units=degrees
+set wr_vecnames
+option numdgt=7
+
+* transient analysis
+* through trial and error method simualtions with tmax=1ns reproduced reference designs
+* tmax = 2ns also works producing results with less than 5% difference than refernce designs
+* only 1 reference design (design 1) had spec SR > 30uV/s, with tmax=2ns we get -1.66% error
+* without tmax steps were too coarse for faster edges
+tran 50n 30u 0 2n
+* save Vout data in a file named 'tran_TwoStage.csv'
+wrdata tran_TwoStage.csv v(net6)
+meas tran vlo min v(net6)
+meas tran vhi max v(net6)
+let v10 = vlo + 0.1*(vhi-vlo)
+let v90 = vlo + 0.9*(vhi-vlo)
+meas tran t10 when v(net6)=v10 rise=1
+meas tran t90 when v(net6)=v90 rise=1
+let sr = (v90-v10)/(t90-t10)/1e6
+print v10 v90 sr
+plot v(net6) v(aid) title 'Transient'
+hardcopy transient.svg v(net6) v(aid)
+reset
+
+* ac analysis
+ac dec 10 1 1T
+* save Vout data in a file named 'ac_TwoStage.csv'
+plot vm(net6) loglog xlimit 1 1g title 'AC gain magnitude'
+plot cph(net6) xlog xlimit 1 1g title 'AC phase'
+meas ac ugbw when vm(net6)=1 fall=1
+let ph = cph(net6)
+meas ac ph_at_ugbw find ph when vm(net6)=1 fall=1
+let pm = 180 + ph_at_ugbw
+print pm
+hardcopy ac_gain.svg vm(net6) loglog xlimit 1 1g
+hardcopy ac_phase.svg cph(net6) xlog xlimit 1 1g
+reset
+
+* noise analysis
+* calculate the output noise and save it in a file named 'noise_TwoStage.csv'
+noise v(net6) Vinput dec 10 1 1G
+reset
+
+* dc analysis
+op
+* save the total current consumption in a file named 'dc_TwoStage.csv'
+* in dut_testbench.py self.current = - dc_raw_outputs[1]
+let I_total = i(vdd)
+reset
+
+.endc
+
+.end
