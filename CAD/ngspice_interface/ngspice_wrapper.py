@@ -116,6 +116,7 @@ class NgspiceWrapper(object):
     def simulate(self, netlist_path):
         info = 0 # this means no error occurred
         command = "/usr/bin/ngspice -b %s >/dev/null 2>&1" %netlist_path
+        command = "D:\\Software\\ngspice-47_64\\Spice64\\bin\\ngspice -b %s" %netlist_path
         exit_code = os.system(command)
         if (exit_code % 256):
             # raise RuntimeError('program {} failed!'.format(command))

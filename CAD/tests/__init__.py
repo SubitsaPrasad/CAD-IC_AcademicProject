@@ -1,0 +1,1 @@
+# this preserves the package-like template
